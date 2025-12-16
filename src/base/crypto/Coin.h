@@ -36,10 +36,12 @@ public:
         SUMO,
         ARQMA,
         GRAFT,
-        KEVA,
         RAVEN,
         WOWNERO,
         VEIL,
+        ZEPHYR,
+        TOWNFORGE,
+        YADA,
         MAX
     };
 

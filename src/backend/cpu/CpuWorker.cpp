@@ -407,7 +407,9 @@ void xmrig::CpuWorker<N>::start()
             }
         }
 
-        consumeJob();
+        if (!Nonce::isPaused()) {
+            consumeJob();
+        }
     }
 }
 

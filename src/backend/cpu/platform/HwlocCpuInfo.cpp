@@ -1,6 +1,6 @@
 /* XMRig
- * Copyright (c) 2018-2021 SChernykh   <https://github.com/SChernykh>
- * Copyright (c) 2016-2021 XMRig       <support@xmrig.com>
+ * Copyright (c) 2018-2023 SChernykh   <https://github.com/SChernykh>
+ * Copyright (c) 2016-2023 XMRig       <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -36,27 +36,22 @@
 #include "base/io/log/Log.h"
 
 
-namespace xmrig {
-
-
-uint32_t HwlocCpuInfo::m_features = 0;
-
-
-static inline bool isCacheObject(hwloc_obj_t obj)
+#if HWLOC_API_VERSION < 0x20000
+static inline int hwloc_obj_type_is_cache(hwloc_obj_type_t type)
 {
-#   if HWLOC_API_VERSION >= 0x20000
-    return hwloc_obj_type_is_cache(obj->type);
-#   else
-    return obj->type == HWLOC_OBJ_CACHE;
-#   endif
+    return type == HWLOC_OBJ_CACHE;
 }
+#endif
+
+
+namespace xmrig {
 
 
 template <typename func>
 static inline void findCache(hwloc_obj_t obj, unsigned min, unsigned max, func lambda)
 {
     for (size_t i = 0; i < obj->arity; i++) {
-        if (isCacheObject(obj->children[i])) {
+        if (hwloc_obj_type_is_cache(obj->children[i]->type)) {
             const unsigned depth = obj->children[i]->attr->cache.depth;
             if (depth < min || depth > max) {
                 continue;
@@ -174,10 +169,6 @@ xmrig::HwlocCpuInfo::HwlocCpuInfo()
     m_packages  = countByType(m_topology, HWLOC_OBJ_PACKAGE);
 
     if (m_nodes > 1) {
-        if (hwloc_topology_get_support(m_topology)->membind->set_thisthread_membind) {
-            m_features |= SET_THISTHREAD_MEMBIND;
-        }
-
         m_nodeset.reserve(m_nodes);
         hwloc_obj_t node = nullptr;
 
@@ -322,20 +313,26 @@ void xmrig::HwlocCpuInfo::processTopLevelCache(hwloc_obj_t cache, const Algorith
     if (cache->attr->cache.depth == 3) {
         for (size_t i = 0; i < cache->arity; ++i) {
             hwloc_obj_t l2 = cache->children[i];
-            if (!isCacheObject(l2) || l2->attr == nullptr) {
+            if (!hwloc_obj_type_is_cache(l2->type) || l2->attr == nullptr) {
                 continue;
             }
 
             L2 += l2->attr->cache.size;
             L2_associativity = l2->attr->cache.associativity;
 
-            if (L3_exclusive && l2->attr->cache.size >= scratchpad) {
-                extra += scratchpad;
+            if (L3_exclusive) {
+                if (vendor() == VENDOR_AMD) {
+                    extra += std::min<size_t>(l2->attr->cache.size, scratchpad);
+                }
+                else if (l2->attr->cache.size >= scratchpad) {
+                    extra += scratchpad;
+                }
             }
         }
     }
 
-    if (scratchpad == 2 * oneMiB) {
+    // This code is supposed to run only on Intel CPUs
+    if ((vendor() == VENDOR_INTEL) && (scratchpad == 2 * oneMiB)) {
         if (L2 && (cores.size() * oneMiB) == L2 && L2_associativity == 16 && L3 >= L2) {
             L3    = L2;
             extra = L2;
@@ -350,7 +347,7 @@ void xmrig::HwlocCpuInfo::processTopLevelCache(hwloc_obj_t cache, const Algorith
     }
 
 #   ifdef XMRIG_ALGO_RANDOMX
-    if ((algorithm.family() == Algorithm::RANDOM_X) && L3_exclusive && (PUs > cores.size()) && (PUs < cores.size() * 2)) {
+    if ((vendor() == VENDOR_INTEL) && (algorithm.family() == Algorithm::RANDOM_X) && L3_exclusive && (PUs < cores.size() * 2)) {
         // Use all L3+L2 on latest Intel CPUs with P-cores, E-cores and exclusive L3 cache
         cacheHashes = (L3 + L2) / scratchpad;
     }
