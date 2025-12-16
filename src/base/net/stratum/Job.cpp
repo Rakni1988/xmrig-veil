@@ -165,12 +165,17 @@ size_t xmrig::Job::nonceOffset() const
         break;
     }
 
+    if (algorithm() == Algorithm::RX_VEIL) {
+        return 140;
+    }
+
     if (algorithm() == Algorithm::RX_YADA) {
         return 147;
     }
 
     return 39;
 }
+
 
 
 void xmrig::Job::setDiff(uint64_t diff)
@@ -202,20 +207,6 @@ void xmrig::Job::setSigKey(const char *sig_key)
 #   endif
 }
 
-
-int32_t xmrig::Job::nonceOffset() const
-{
-   auto f = algorithm().family();
-   if (f == Algorithm::KAWPOW)     return 32;
-   if (f == Algorithm::GHOSTRIDER) return 76;
-
-   auto id = algorithm().id();
-   if (id == Algorithm::ASTROBWT_DERO_2) return 44;
-
-   if (id == Algorithm::RX_VEIL) return 140;
-
-   return 39;
-}
 
 uint32_t xmrig::Job::getNumTransactions() const
 {
