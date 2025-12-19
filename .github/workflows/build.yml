@@ -33,9 +33,7 @@ jobs:
         if: matrix.os == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            git build-essential cmake pkg-config \
-            libssl-dev libhwloc-dev
+          sudo apt-get install -y build-essential cmake git libuv1-dev libssl-dev libhwloc-dev
 
       - name: Setup MSVC (Windows)
         if: matrix.os == 'windows-2022'
