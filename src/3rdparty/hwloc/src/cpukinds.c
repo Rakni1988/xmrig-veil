@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020-2021 Inria.  All rights reserved.
+ * Copyright © 2020-2024 Inria.  All rights reserved.
  * See COPYING in top-level directory.
  */
 
@@ -50,6 +50,7 @@ hwloc_internal_cpukinds_dup(hwloc_topology_t new, hwloc_topology_t old)
     return -1;
   new->cpukinds = kinds;
   new->nr_cpukinds = old->nr_cpukinds;
+  new->nr_cpukinds_allocated = old->nr_cpukinds;
   memcpy(kinds, old->cpukinds, old->nr_cpukinds * sizeof(*kinds));
 
   for(i=0;i<old->nr_cpukinds; i++) {
@@ -504,7 +505,7 @@ hwloc_internal_cpukinds_rank(struct hwloc_topology *topology)
       heuristics = HWLOC_CPUKINDS_RANKING_FORCED_EFFICIENCY;
     else if (!strcmp(env, "no_forced_efficiency"))
       heuristics = HWLOC_CPUKINDS_RANKING_NO_FORCED_EFFICIENCY;
-    else if (hwloc_hide_errors() < 2)
+    else if (HWLOC_SHOW_CRITICAL_ERRORS())
       fprintf(stderr, "hwloc: Failed to recognize HWLOC_CPUKINDS_RANKING value %s\n", env);
   }
 

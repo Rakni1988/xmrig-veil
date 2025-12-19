@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.10)
 project(xmrig)
 
 option(WITH_HWLOC           "Enable hwloc support" ON)
@@ -8,7 +8,6 @@ option(WITH_CN_PICO         "Enable CryptoNight-Pico algorithm" ON)
 option(WITH_CN_FEMTO        "Enable CryptoNight-UPX2 algorithm" ON)
 option(WITH_RANDOMX         "Enable RandomX algorithms family" ON)
 option(WITH_ARGON2          "Enable Argon2 algorithms family" ON)
-option(WITH_ASTROBWT        "Enable AstroBWT algorithms family" ON)
 option(WITH_KAWPOW          "Enable KawPow algorithms family" ON)
 option(WITH_GHOSTRIDER      "Enable GhostRider algorithm" ON)
 option(WITH_HTTP            "Enable HTTP protocol support (client/server)" ON)
@@ -28,13 +27,15 @@ option(WITH_STRICT_CACHE    "Enable strict checks for OpenCL cache" ON)
 option(WITH_INTERLEAVE_DEBUG_LOG "Enable debug log for threads interleave" OFF)
 option(WITH_PROFILING       "Enable profiling for developers" OFF)
 option(WITH_SSE4_1          "Enable SSE 4.1 for Blake2" ON)
+option(WITH_AVX2            "Enable AVX2 for Blake2" ON)
 option(WITH_VAES            "Enable VAES instructions for Cryptonight" ON)
 option(WITH_BENCHMARK       "Enable builtin RandomX benchmark and stress test" ON)
 option(WITH_SECURE_JIT      "Enable secure access to JIT memory" OFF)
 option(WITH_DMI             "Enable DMI/SMBIOS reader" ON)
 
 option(BUILD_STATIC         "Build static binary" OFF)
-option(ARM_TARGET           "Force use specific ARM target 8 or 7" 0)
+option(ARM_V8               "Force ARMv8 (64 bit) architecture, use with caution if automatic detection fails, but you sure it may work" OFF)
+option(ARM_V7               "Force ARMv7 (32 bit) architecture, use with caution if automatic detection fails, but you sure it may work" OFF)
 option(HWLOC_DEBUG          "Enable hwloc debug helpers and log" OFF)
 
 
@@ -161,7 +162,7 @@ if (XMRIG_OS_WIN)
         src/crypto/common/VirtualMemory_win.cpp
         )
 
-    set(EXTRA_LIBS ws2_32 psapi iphlpapi userenv)
+    set(EXTRA_LIBS ws2_32 psapi iphlpapi userenv dbghelp)
 elseif (XMRIG_OS_APPLE)
     list(APPEND SOURCES_OS
         src/App_unix.cpp
@@ -199,7 +200,6 @@ find_package(UV REQUIRED)
 include(cmake/flags.cmake)
 include(cmake/randomx.cmake)
 include(cmake/argon2.cmake)
-include(cmake/astrobwt.cmake)
 include(cmake/kawpow.cmake)
 include(cmake/ghostrider.cmake)
 include(cmake/OpenSSL.cmake)
@@ -240,7 +240,10 @@ add_executable(${CMAKE_PROJECT_NAME} ${HEADERS} ${SOURCES} ${SOURCES_OS} ${HEADE
 target_link_libraries(${CMAKE_PROJECT_NAME} ${XMRIG_ASM_LIBRARY} ${OPENSSL_LIBRARIES} ${UV_LIBRARIES} ${EXTRA_LIBS} ${CPUID_LIB} ${ARGON2_LIBRARY} ${ETHASH_LIBRARY} ${GHOSTRIDER_LIBRARY})
 
 if (WIN32)
-    add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/bin/WinRing0/WinRing0x64.sys" $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
+    if (NOT ARM_TARGET)
+        add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/bin/WinRing0/WinRing0x64.sys" $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
+    endif()
+
     add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/scripts/benchmark_1M.cmd" $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
     add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/scripts/benchmark_10M.cmd" $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
     add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_SOURCE_DIR}/scripts/pool_mine_example.cmd" $<TARGET_FILE_DIR:${CMAKE_PROJECT_NAME}>)
@@ -249,5 +252,5 @@ if (WIN32)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES Clang AND CMAKE_BUILD_TYPE STREQUAL Release AND NOT CMAKE_GENERATOR STREQUAL Xcode)
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_STRIP} ${CMAKE_PROJECT_NAME})
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${CMAKE_STRIP} "$<TARGET_FILE:${CMAKE_PROJECT_NAME}>")
 endif()

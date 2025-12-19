@@ -4,8 +4,8 @@
  * Copyright (c) 2014      Lucas Jones <https://github.com/lucasjones>
  * Copyright (c) 2014-2016 Wolf9466    <https://github.com/OhGodAPet>
  * Copyright (c) 2016      Jay D Dee   <jayddee246@gmail.com>
- * Copyright (c) 2018-2021 SChernykh   <https://github.com/SChernykh>
- * Copyright (c) 2016-2021 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
+ * Copyright (c) 2018-2025 SChernykh   <https://github.com/SChernykh>
+ * Copyright (c) 2016-2025 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -21,12 +21,9 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XMRIG_USAGE_H
-#define XMRIG_USAGE_H
-
+#pragma once
 
 #include "version.h"
-
 
 #include <string>
 
@@ -59,12 +56,15 @@ static inline const std::string &usage()
     u += "      --tls-fingerprint=HEX     pool TLS certificate fingerprint for strict certificate pinning\n";
 #   endif
 
-    u += "      --dns-ipv6                prefer IPv6 records from DNS responses\n";
+    u += "  -4, --ipv4                    resolve names to IPv4 addresses\n";
+    u += "  -6, --ipv6                    resolve names to IPv6 addresses\n";
     u += "      --dns-ttl=N               N seconds (default: 30) TTL for internal DNS cache\n";
 
 #   ifdef XMRIG_FEATURE_HTTP
     u += "      --daemon                  use daemon RPC instead of pool for solo mining\n";
+    u += "      --daemon-zmq-port=N       daemon's zmq-pub port number (only use it if daemon has it enabled)\n";
     u += "      --daemon-poll-interval=N  daemon poll interval in milliseconds (default: 1000)\n";
+    u += "      --daemon-job-timeout=N    daemon job timeout in milliseconds (default: 15000)\n";
     u += "      --self-select=URL         self-select block templates from URL\n";
     u += "      --submit-to-origin        also submit solution back to self-select URL\n";
 #   endif
@@ -106,11 +106,6 @@ static inline const std::string &usage()
     u += "      --randomx-wrmsr=N         write custom value(s) to MSR registers or disable MSR mod (-1)\n";
     u += "      --randomx-no-rdmsr        disable reverting initial MSR values on exit\n";
     u += "      --randomx-cache-qos       enable Cache QoS\n";
-#   endif
-
-#   ifdef XMRIG_ALGO_ASTROBWT
-    u += "      --astrobwt-max-size=N     skip hashes with large stage 2 size, default: 550, min: 400, max: 1200\n";
-    u += "      --astrobwt-avx2           enable AVX2 optimizations for AstroBWT algorithm";
 #   endif
 
 #   ifdef XMRIG_FEATURE_OPENCL
@@ -208,6 +203,4 @@ static inline const std::string &usage()
 }
 
 
-} /* namespace xmrig */
-
-#endif /* XMRIG_USAGE_H */
+} // namespace xmrig

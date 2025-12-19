@@ -35,13 +35,13 @@ public:
         MONERO,
         SUMO,
         ARQMA,
-        DERO,
-        DERO_HE,
         GRAFT,
-        KEVA,
         RAVEN,
         WOWNERO,
         VEIL,
+        ZEPHYR,
+        TOWNFORGE,
+        YADA,
         MAX
     };
 

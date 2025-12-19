@@ -1,6 +1,6 @@
 /* XMRig
- * Copyright (c) 2018-2021 SChernykh   <https://github.com/SChernykh>
- * Copyright (c) 2016-2021 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
+ * Copyright (c) 2018-2025 SChernykh   <https://github.com/SChernykh>
+ * Copyright (c) 2016-2025 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,9 +16,7 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XMRIG_CONFIG_PLATFORM_H
-#define XMRIG_CONFIG_PLATFORM_H
-
+#pragma once
 
 #ifdef _MSC_VER
 #   include "getopt/getopt.h"
@@ -28,13 +26,12 @@
 
 
 #include "base/kernel/interfaces/IConfig.h"
-#include "version.h"
 
 
 namespace xmrig {
 
 
-static const char short_options[] = "a:c:kBp:Px:r:R:s:t:T:o:u:O:v:l:Sx:";
+static const char short_options[] = "a:c:kBp:Px:r:R:s:t:T:o:u:O:v:l:Sx:46";
 
 
 static const option options[] = {
@@ -50,6 +47,7 @@ static const option options[] = {
     { "http-no-restricted",    0, nullptr, IConfig::HttpRestrictedKey     },
     { "daemon",                0, nullptr, IConfig::DaemonKey             },
     { "daemon-poll-interval",  1, nullptr, IConfig::DaemonPollKey         },
+    { "daemon-job-timeout",    1, nullptr, IConfig::DaemonJobTimeoutKey   },
     { "self-select",           1, nullptr, IConfig::SelfSelectKey         },
     { "submit-to-origin",      0, nullptr, IConfig::SubmitToOriginKey     },
     { "daemon-zmq-port",       1, nullptr, IConfig::DaemonZMQPortKey      },
@@ -98,7 +96,8 @@ static const option options[] = {
     { "no-title",              0, nullptr, IConfig::NoTitleKey            },
     { "pause-on-battery",      0, nullptr, IConfig::PauseOnBatteryKey     },
     { "pause-on-active",       1, nullptr, IConfig::PauseOnActiveKey      },
-    { "dns-ipv6",              0, nullptr, IConfig::DnsIPv6Key            },
+    { "ipv4",                  0, nullptr, IConfig::DnsIPv4Key            },
+    { "ipv6",                  0, nullptr, IConfig::DnsIPv6Key            },
     { "dns-ttl",               1, nullptr, IConfig::DnsTtlKey             },
     { "spend-secret-key",      1, nullptr, IConfig::SpendSecretKey        },
 #   ifdef XMRIG_FEATURE_BENCHMARK
@@ -140,10 +139,6 @@ static const option options[] = {
     { "randomx-cache-qos",     0, nullptr, IConfig::RandomXCacheQoSKey    },
     { "cache-qos",             0, nullptr, IConfig::RandomXCacheQoSKey    },
 #   endif
-    #ifdef XMRIG_ALGO_ASTROBWT
-    { "astrobwt-max-size",     1, nullptr, IConfig::AstroBWTMaxSizeKey    },
-    { "astrobwt-avx2",         0, nullptr, IConfig::AstroBWTAVX2Key       },
-    #endif
 #   ifdef XMRIG_FEATURE_OPENCL
     { "opencl",                0, nullptr, IConfig::OclKey                },
     { "opencl-devices",        1, nullptr, IConfig::OclDevicesKey         },
@@ -172,6 +167,3 @@ static const option options[] = {
 
 
 } // namespace xmrig
-
-
-#endif /* XMRIG_CONFIG_PLATFORM_H */

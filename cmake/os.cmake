@@ -15,11 +15,10 @@ else()
         set(XMRIG_OS_ANDROID ON)
     elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
         set(XMRIG_OS_LINUX ON)
-    elseif(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
+    elseif(CMAKE_SYSTEM_NAME STREQUAL FreeBSD OR CMAKE_SYSTEM_NAME STREQUAL DragonFly)
         set(XMRIG_OS_FREEBSD ON)
     endif()
 endif()
-
 
 if (XMRIG_OS_WIN)
     add_definitions(-DWIN32 -DXMRIG_OS_WIN)

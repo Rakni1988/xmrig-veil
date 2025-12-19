@@ -27,8 +27,14 @@
 
 #elif defined __GNUC__
 
-#define bswap_64(x) __builtin_bswap64(x)
-#define bswap_32(x) __builtin_bswap32(x)
+#ifndef bswap_64
+#   define bswap_64(x) __builtin_bswap64(x)
+#endif
+
+#ifndef bswap_32
+#   define bswap_32(x) __builtin_bswap32(x)
+#endif
+
 
 #else
 

@@ -1,6 +1,6 @@
 /* XMRig
- * Copyright (c) 2018-2021 SChernykh   <https://github.com/SChernykh>
- * Copyright (c) 2016-2021 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
+ * Copyright (c) 2018-2025 SChernykh   <https://github.com/SChernykh>
+ * Copyright (c) 2016-2025 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,9 +16,7 @@
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef XMRIG_ICONFIG_H
-#define XMRIG_ICONFIG_H
-
+#pragma once
 
 #include "3rdparty/rapidjson/fwd.h"
 
@@ -82,12 +80,14 @@ public:
         HugePageSizeKey      = 1050,
         PauseOnActiveKey     = 1051,
         SubmitToOriginKey    = 1052,
-        DnsIPv6Key           = 1053,
+        DnsIPv4Key           = '4',
+        DnsIPv6Key           = '6',
         DnsTtlKey            = 1054,
         SpendSecretKey       = 1055,
         DaemonZMQPortKey     = 1056,
         HugePagesJitKey      = 1057,
         RotationKey          = 1058,
+        DaemonJobTimeoutKey  = 1059,
 
         // xmrig common
         CPUPriorityKey       = 1021,
@@ -111,8 +111,6 @@ public:
         CPUMaxThreadsKey     = 1026,
         MemoryPoolKey        = 1027,
         YieldKey             = 1030,
-        AstroBWTMaxSizeKey   = 1034,
-        AstroBWTAVX2Key      = 1036,
         Argon2ImplKey        = 1039,
         RandomXCacheQoSKey   = 1040,
 
@@ -178,7 +176,4 @@ public:
 };
 
 
-} /* namespace xmrig */
-
-
-#endif // XMRIG_ICONFIG_H
+} // namespace xmrig

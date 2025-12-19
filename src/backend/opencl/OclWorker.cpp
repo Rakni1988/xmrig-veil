@@ -35,11 +35,6 @@
 #   include "backend/opencl/runners/OclRxVmRunner.h"
 #endif
 
-#ifdef XMRIG_ALGO_ASTROBWT
-#   include "backend/opencl/runners/OclAstroBWTRunner.h"
-#   include "backend/opencl/runners/OclAstroBWT_v2_Runner.h"
-#endif
-
 #ifdef XMRIG_ALGO_KAWPOW
 #   include "backend/opencl/runners/OclKawPowRunner.h"
 #endif
@@ -90,17 +85,6 @@ xmrig::OclWorker::OclWorker(size_t id, const OclLaunchData &data) :
     case Algorithm::ARGON2:
 #       ifdef XMRIG_ALGO_ARGON2
         m_runner = nullptr;
-#       endif
-        break;
-
-    case Algorithm::ASTROBWT:
-#       ifdef XMRIG_ALGO_ASTROBWT
-        if (m_algorithm.id() == Algorithm::ASTROBWT_DERO_2) {
-            m_runner = new OclAstroBWT_v2_Runner(id, data);
-        }
-        else {
-            m_runner = new OclAstroBWTRunner(id, data);
-        }
 #       endif
         break;
 
@@ -188,7 +172,7 @@ void xmrig::OclWorker::start()
             const uint64_t t = Chrono::steadyMSecs();
 
             try {
-                m_runner->run(readUnaligned(m_job.nonce()), results);
+                m_runner->run(readUnaligned(m_job.nonce()), m_job.nonceOffset(), results);
             }
             catch (std::exception &ex) {
                 printError(id(), ex.what());
@@ -208,7 +192,7 @@ void xmrig::OclWorker::start()
             std::this_thread::yield();
         }
 
-        if (!consumeJob()) {
+        if (isReady() && !consumeJob()) {
             return;
         }
     }

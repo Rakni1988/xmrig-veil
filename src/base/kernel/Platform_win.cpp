@@ -1,6 +1,6 @@
 /* XMRig
- * Copyright (c) 2018-2021 SChernykh   <https://github.com/SChernykh>
- * Copyright (c) 2016-2021 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
+ * Copyright (c) 2018-2025 SChernykh   <https://github.com/SChernykh>
+ * Copyright (c) 2016-2025 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
-
 
 #include <algorithm>
 #include <winsock2.h>
@@ -54,19 +53,33 @@ char *xmrig::Platform::createUserAgent()
     char *buf = new char[max]();
     int length = snprintf(buf, max, "%s/%s (Windows NT %lu.%lu", APP_NAME, APP_VERSION, osver.dwMajorVersion, osver.dwMinorVersion);
 
-#   if defined(__x86_64__) || defined(_M_AMD64)
-    length += snprintf(buf + length, max - length, "; Win64; x64) libuv/%s", uv_version_string());
+#   if defined(XMRIG_64_BIT)
+    length += snprintf(buf + length, max - length, "; Win64; "
+#   if defined(XMRIG_ARM)
+    "arm64"
+#   else
+    "x64"
+#   endif
+    ") libuv/%s", uv_version_string());
 #   else
     length += snprintf(buf + length, max - length, ") libuv/%s", uv_version_string());
 #   endif
 
-#   ifdef __GNUC__
+#   ifdef __clang__
+    snprintf(buf + length, max - length, " clang/%d.%d.%d", __clang_major__, __clang_minor__, __clang_patchlevel__);
+#   elif defined(__GNUC__)
     snprintf(buf + length, max - length, " gcc/%d.%d.%d", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #   elif _MSC_VER
     snprintf(buf + length, max - length, " msvc/%d", MSVC_VERSION);
 #   endif
 
     return buf;
+}
+
+
+bool xmrig::Platform::hasKeepalive()
+{
+    return winOsVersion().dwMajorVersion >= 6;
 }
 
 

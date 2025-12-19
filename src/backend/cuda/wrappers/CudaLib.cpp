@@ -19,10 +19,10 @@
 #include <stdexcept>
 #include <uv.h>
 
-
 #include "backend/cuda/wrappers/CudaLib.h"
 #include "base/io/Env.h"
 #include "base/io/log/Log.h"
+#include "base/io/log/Tags.h"
 #include "base/kernel/Process.h"
 #include "crypto/rx/RxAlgo.h"
 
@@ -50,8 +50,6 @@ static String defaultLoader = "libxmrig-cuda.so";
 
 
 static const char *kAlloc                               = "alloc";
-static const char *kAstroBWTHash                        = "astroBWTHash";
-static const char *kAstroBWTPrepare                     = "astroBWTPrepare";
 static const char *kCnHash                              = "cnHash";
 static const char *kDeviceCount                         = "deviceCount";
 static const char *kDeviceInfo                          = "deviceInfo";
@@ -70,14 +68,13 @@ static const char *kPluginVersion                       = "pluginVersion";
 static const char *kRelease                             = "release";
 static const char *kRxHash                              = "rxHash";
 static const char *kRxPrepare                           = "rxPrepare";
+static const char *kRxUpdateDataset                     = "rxUpdateDataset";
 static const char *kSetJob                              = "setJob";
 static const char *kSetJob_v2                           = "setJob_v2";
 static const char *kVersion                             = "version";
 
 
 using alloc_t                                           = nvid_ctx * (*)(uint32_t, int32_t, int32_t);
-using astroBWTHash_t                                    = bool (*)(nvid_ctx *, uint32_t, uint64_t, uint32_t *, uint32_t *);
-using astroBWTPrepare_t                                 = bool (*)(nvid_ctx *, uint32_t);
 using cnHash_t                                          = bool (*)(nvid_ctx *, uint32_t, uint64_t, uint64_t, uint32_t *, uint32_t *);
 using deviceCount_t                                     = uint32_t (*)();
 using deviceInfo_t                                      = bool (*)(nvid_ctx *, int32_t, int32_t, uint32_t, int32_t);
@@ -96,14 +93,13 @@ using pluginVersion_t                                   = const char * (*)();
 using release_t                                         = void (*)(nvid_ctx *);
 using rxHash_t                                          = bool (*)(nvid_ctx *, uint32_t, uint64_t, uint32_t *, uint32_t *);
 using rxPrepare_t                                       = bool (*)(nvid_ctx *, const void *, size_t, bool, uint32_t);
+using rxUpdateDataset_t                                 = bool (*)(nvid_ctx *, const void *, size_t);
 using setJob_t                                          = bool (*)(nvid_ctx *, const void *, size_t, uint32_t);
 using setJob_v2_t                                       = bool (*)(nvid_ctx *, const void *, size_t, const char *);
 using version_t                                         = uint32_t (*)(Version);
 
 
 static alloc_t pAlloc                                   = nullptr;
-static astroBWTHash_t pAstroBWTHash                     = nullptr;
-static astroBWTPrepare_t pAstroBWTPrepare               = nullptr;
 static cnHash_t pCnHash                                 = nullptr;
 static deviceCount_t pDeviceCount                       = nullptr;
 static deviceInfo_t pDeviceInfo                         = nullptr;
@@ -122,6 +118,7 @@ static pluginVersion_t pPluginVersion                   = nullptr;
 static release_t pRelease                               = nullptr;
 static rxHash_t pRxHash                                 = nullptr;
 static rxPrepare_t pRxPrepare                           = nullptr;
+static rxUpdateDataset_t pRxUpdateDataset               = nullptr;
 static setJob_t pSetJob                                 = nullptr;
 static setJob_v2_t pSetJob_v2                           = nullptr;
 static version_t pVersion                               = nullptr;
@@ -176,18 +173,6 @@ void xmrig::CudaLib::close()
 }
 
 
-bool xmrig::CudaLib::astroBWTHash(nvid_ctx *ctx, uint32_t startNonce, uint64_t target, uint32_t *rescount, uint32_t *resnonce) noexcept
-{
-    return pAstroBWTHash(ctx, startNonce, target, rescount, resnonce);
-}
-
-
-bool xmrig::CudaLib::astroBWTPrepare(nvid_ctx *ctx, uint32_t batchSize) noexcept
-{
-    return pAstroBWTPrepare(ctx, batchSize);
-}
-
-
 bool xmrig::CudaLib::cnHash(nvid_ctx *ctx, uint32_t startNonce, uint64_t height, uint64_t target, uint32_t *rescount, uint32_t *resnonce)
 {
     return pCnHash(ctx, startNonce, height, target, rescount, resnonce);
@@ -220,7 +205,23 @@ bool xmrig::CudaLib::rxHash(nvid_ctx *ctx, uint32_t startNonce, uint64_t target,
 
 bool xmrig::CudaLib::rxPrepare(nvid_ctx *ctx, const void *dataset, size_t datasetSize, bool dataset_host, uint32_t batchSize) noexcept
 {
+#   ifdef XMRIG_ALGO_RANDOMX
+    if (!pRxUpdateDataset) {
+        LOG_WARN("%s" YELLOW_BOLD("CUDA plugin is outdated. Please update to the latest version"), Tags::randomx());
+    }
+#   endif
+
     return pRxPrepare(ctx, dataset, datasetSize, dataset_host, batchSize);
+}
+
+
+bool xmrig::CudaLib::rxUpdateDataset(nvid_ctx *ctx, const void *dataset, size_t datasetSize) noexcept
+{
+    if (pRxUpdateDataset) {
+        return pRxUpdateDataset(ctx, dataset, datasetSize);
+    }
+
+    return true;
 }
 
 
@@ -371,13 +372,9 @@ bool xmrig::CudaLib::open()
 #   ifdef XMRIG_OS_LINUX
     if (m_loader == defaultLoader) {
         m_loader = Process::location(Process::ExeLocation, m_loader);
-    }
-    else {
-        return false;
-    }
-
-    if (uv_dlopen(m_loader, &cudaLib) == 0) {
-        return true;
+        if (uv_dlopen(m_loader, &cudaLib) == 0) {
+            return true;
+        }
     }
 #   endif
 
@@ -410,8 +407,6 @@ void xmrig::CudaLib::load()
     DLSYM(Release);
     DLSYM(RxHash);
     DLSYM(RxPrepare);
-    DLSYM(AstroBWTHash);
-    DLSYM(AstroBWTPrepare);
     DLSYM(KawPowHash);
     DLSYM(KawPowPrepare_v2);
     DLSYM(KawPowStopHash);
@@ -424,6 +419,8 @@ void xmrig::CudaLib::load()
         DLSYM(DeviceInfo_v2);
         DLSYM(SetJob_v2);
     }
+
+    uv_dlsym(&cudaLib, kRxUpdateDataset, reinterpret_cast<void**>(&pRxUpdateDataset));
 
     pInit();
 }
