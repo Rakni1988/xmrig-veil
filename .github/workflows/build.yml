@@ -1,0 +1,172 @@
+name: build
+
+on:
+  push:
+    branches: [ "master", "main", "dev" ]
+    tags: [ "v*" ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            artifact_ext: tar.gz
+          - os: windows-2022
+            artifact_ext: zip
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # -------------------------
+      # Dependencies
+      # -------------------------
+      - name: Install deps (Ubuntu, per xmrig docs)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            git build-essential cmake pkg-config \
+            libssl-dev libhwloc-dev
+
+      - name: Setup MSVC (Windows)
+        if: matrix.os == 'windows-2022'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install deps (Windows via vcpkg)
+        if: matrix.os == 'windows-2022'
+        shell: pwsh
+        run: |
+          git clone https://github.com/microsoft/vcpkg
+          .\vcpkg\bootstrap-vcpkg.bat
+          .\vcpkg\vcpkg.exe install openssl:x64-windows hwloc:x64-windows
+
+      # -------------------------
+      # Configure + Build (docs-style)
+      # -------------------------
+      - name: Configure (Ubuntu)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+
+      - name: Build (Ubuntu)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          cd build
+          make -j$(nproc)
+
+      - name: Configure (Windows)
+        if: matrix.os == 'windows-2022'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          cmake -S . -B build `
+            -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake"
+
+      - name: Build (Windows)
+        if: matrix.os == 'windows-2022'
+        shell: pwsh
+        run: |
+          cmake --build build --config Release
+
+      # -------------------------
+      # Package
+      # -------------------------
+      - name: Package (Ubuntu)
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          VERSION="$(git describe --tags --always)"
+          OUTDIR="xmrig-veil-${VERSION}-linux-x64"
+          mkdir -p "${OUTDIR}"
+
+          # binary
+          cp -v build/xmrig "${OUTDIR}/"
+
+          # docs
+          cp -v README* LICENSE* "${OUTDIR}/" 2>/dev/null || true
+
+          # default config
+          if [ -f src/config.json ]; then
+            cp -v src/config.json "${OUTDIR}/config.json"
+          elif [ -f config.json ]; then
+            cp -v config.json "${OUTDIR}/config.json"
+          fi
+
+          # sources
+          mkdir -p "${OUTDIR}/src"
+          rsync -a --delete --exclude ".git" --exclude "build" src/ "${OUTDIR}/src/"
+
+          tar -czf "${OUTDIR}.tar.gz" "${OUTDIR}"
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-2022'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = (git describe --tags --always).Trim()
+          $outdir = "xmrig-veil-$version-windows-x64"
+          New-Item -ItemType Directory -Force -Path $outdir | Out-Null
+
+          # binary (MSVC multi-config => Release\xmrig.exe)
+          $bin1 = "build\Release\xmrig.exe"
+          $bin2 = "build\xmrig.exe"
+          if (Test-Path $bin1) {
+            Copy-Item -Force $bin1 "$outdir\xmrig.exe"
+          } elseif (Test-Path $bin2) {
+            Copy-Item -Force $bin2 "$outdir\xmrig.exe"
+          } else {
+            throw "xmrig.exe not found in build output"
+          }
+
+          # docs
+          Get-ChildItem -Path . -Filter "README*" | ForEach-Object { Copy-Item -Force $_.FullName "$outdir\" }
+          Get-ChildItem -Path . -Filter "LICENSE*" | ForEach-Object { Copy-Item -Force $_.FullName "$outdir\" }
+
+          # default config
+          if (Test-Path "src\config.json") {
+            Copy-Item -Force "src\config.json" "$outdir\config.json"
+          } elseif (Test-Path "config.json") {
+            Copy-Item -Force "config.json" "$outdir\config.json"
+          }
+
+          # sources
+          New-Item -ItemType Directory -Force -Path "$outdir\src" | Out-Null
+          robocopy "src" "$outdir\src" /E /XD ".git" "build" | Out-Null
+
+          # WinRing0 (MSR)
+          if (Test-Path "bin\WinRing0") {
+            New-Item -ItemType Directory -Force -Path "$outdir\WinRing0" | Out-Null
+            robocopy "bin\WinRing0" "$outdir\WinRing0" /E | Out-Null
+          }
+
+          Compress-Archive -Force -Path "$outdir\*" -DestinationPath "$outdir.zip"
+
+      # -------------------------
+      # Upload artifacts
+      # -------------------------
+      - name: Upload artifact (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xmrig-veil-linux-x64
+          path: xmrig-veil-*-linux-x64.tar.gz
+
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-2022'
+        uses: actions/upload-artifact@v4
+        with:
+          name: xmrig-veil-windows-x64
+          path: xmrig-veil-*-windows-x64.zip
