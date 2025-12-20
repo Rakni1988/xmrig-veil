@@ -146,12 +146,15 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$outdir\src" | Out-Null
           robocopy "src" "$outdir\src" /E /XD ".git" "build" | Out-Null
           if ($LASTEXITCODE -ge 8) { throw "robocopy src failed: $LASTEXITCODE" }
+          $global:LASTEXITCODE = 0
+
 
           # WinRing0 (MSR)
           if (Test-Path "bin\WinRing0") {
             New-Item -ItemType Directory -Force -Path "$outdir\WinRing0" | Out-Null
             robocopy "bin\WinRing0" "$outdir\WinRing0" /E | Out-Null
             if ($LASTEXITCODE -ge 8) { throw "robocopy WinRing0 failed: $LASTEXITCODE" }
+            $global:LASTEXITCODE = 0
           }
 
           Compress-Archive -Force -Path "$outdir\*" -DestinationPath "$outdir.zip"
